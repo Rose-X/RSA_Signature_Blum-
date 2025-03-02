@@ -1,0 +1,158 @@
+from sympy import isprime, mod_inverse
+from math import gcd
+
+ma_date_naissance = 1223006
+
+nb_inf = ma_date_naissance 
+while nb_inf > 2:
+    if isprime(nb_inf) and nb_inf % 4 == 3:
+        p = nb_inf
+        break
+    nb_inf -= 1
+
+nb_sup = ma_date_naissance  
+while True:
+    if isprime(nb_sup) and nb_sup % 4 == 3:
+        q = nb_sup
+        break
+    nb_sup += 1
+
+print("Nombre premier de Blum inférieur:", p)
+print("Nombre premier de Blum supérieur:", q)
+
+n = p * q  
+print("Valeur de n (module RSA):", n) 
+
+TE_n = (p - 1) * (q - 1)  
+print("Valeur de φ(n) (Totient d'Euler):", TE_n) 
+
+e = 65537  
+if gcd(e, TE_n) != 1:
+    raise ValueError("Problème : les nombres ne sont pas premiers entre eux, changez la valeur de e.")
+    
+print("e est validé :", e)
+
+d = mod_inverse(e, TE_n)  
+print("d est validé:", d) 
+
+key_public = e * n
+print(key_public)
+
+def texte_en_nombre(texte):
+    liste_ascii = []
+    for a in texte:
+        nb_ascii = ord(a)
+        liste_ascii.append(str(nb_ascii))
+    nombre_texte = ''.join(liste_ascii)
+    return int(nombre_texte) 
+
+def nombre_en_texte(nombre):
+    nombre_str = str(nombre)
+    caracteres = []
+    i = 0
+    while i < len(nombre_str):
+        if i + 2 < len(nombre_str) and int(nombre_str[i:i+3]) <= 122:
+            code_ascii = int(nombre_str[i:i+3])
+            i += 3
+        else:
+            code_ascii = int(nombre_str[i:i+2])
+            i += 2
+        
+        caracteres.append(chr(code_ascii))
+    
+    return ''.join(caracteres) 
+
+message = "Theo" 
+M = texte_en_nombre(message)
+print("Message converti en nombre :", M)
+
+signature = pow(M, d, n) 
+print("Signature générée:", signature)
+print(f'Conversion inverse ASCII en texte : {nombre_en_texte(84104101111)}')
+
+M_verifie = pow(signature, e, n)
+print("Message après vérification:", M_verifie)
+
+if M_verifie == M:
+    print("Le message est authentique.")
+else:
+    print("Le message a été modifié.")
+
+C = pow(M, 2, n)
+print("Message chiffré (C = M^2 mod n) :", C)
+
+def rabin_dechiffre(C, p, q, n):
+    Mp = pow(C, (p + 1)//4, p)
+    Mq = pow(C, (q + 1)//4, q)
+
+    racines_p = [Mp, p - Mp]
+    racines_q = [Mq, q - Mq]
+
+    solutions = []
+
+    for rp in racines_p:
+        for rq in racines_q:
+            inv_p = mod_inverse(p, q) 
+            inv_q = mod_inverse(q, p)
+            x = (rp * q * inv_q + rq * p * inv_p) % n
+            solutions.append(x)
+
+    for sol in solutions:
+        if sol == M:
+            return sol
+    return None
+
+resultat = rabin_dechiffre(C, p, q, n)
+
+if resultat == M_verifie:
+    print(f"Le message a bien été déchiffré : message original {M_verifie} et message déchiffré {resultat}")
+
+Mp = pow(C, (p + 1)//4, p)
+Mq = pow(C, (q + 1)//4, q)
+
+racines_p = [Mp, p - Mp]
+racines_q = [Mq, q - Mq]
+
+solutions = []
+inv_p = mod_inverse(p, q)
+inv_q = mod_inverse(q, p)
+
+for rp in racines_p:
+    for rq in racines_q:
+        x = (rp * q * inv_q + rq * p * inv_p) % n
+        solutions.append(x)
+
+solutions = sorted(set(solutions))
+print("\n(2) Les 4 solutions x où x^2 = C mod n :", solutions)
+
+x, y = None, None
+for i in range(len(solutions)):
+    for j in range(i+1, len(solutions)):
+        a, b = solutions[i], solutions[j]
+        if a != b and a != (n - b) % n:
+            x, y = a, b
+            break
+    if x is not None:
+        break
+
+if x is None:
+    print("Aucun x, y non trivial trouvé.")
+else:
+    print(f"\n(2) x={x}, y={y}, x^2≡y^2 mod n, x≠±y.")
+    d = gcd(x + y, n)
+    print(f"(3) gcd(x+y, n) = {d}")
+    if 1 < d < n:
+        print(f"Facteurs : p={d}, q={n//d}")
+    else:
+        print("PGCD trivial, pas de factorisation.")
+
+x = 24111999  
+bits = []
+
+for i in range(128):
+    x = pow(x, 2, n)
+    bit = x & 1
+    bits.append(str(bit))
+
+sequence_128_bits = ''.join(bits)
+print("Séquence BBS (128 bits) =", sequence_128_bits)
